@@ -217,7 +217,7 @@ func (n *MapItem) Check() (chk TypeCheck) {
 		return
 	}
 
-	if n.Value == nil && mapItemType.DefaultValue == nil {
+	if n.Value == nil && mapItemType.IsNullable() {
 		return
 	}
 

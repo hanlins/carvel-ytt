@@ -13,6 +13,57 @@ import (
 	"github.com/k14s/ytt/pkg/files"
 )
 
+func TestNullableScalarsAllowsNull(t *testing.T) {
+	schemaYAML := `#@schema/match data_values=True
+---
+vpc:
+  name: ""
+  #@schema/nullable
+  nullable_string: "empty"
+  #@schema/nullable
+  nullable_int: 10
+`
+	dataValuesYAML := `#@data/values
+---
+vpc:
+  name: vpc-203d912a
+`
+	templateYAML := `#@ load("@ytt:data", "data")
+---
+rendered: true
+vpc: #@ data.values.vpc
+`
+
+	filesToProcess := files.NewSortedFiles([]*files.File{
+		files.MustNewFileFromSource(files.NewBytesSource("schema.yml", []byte(schemaYAML))),
+		files.MustNewFileFromSource(files.NewBytesSource("dataValues.yml", []byte(dataValuesYAML))),
+		files.MustNewFileFromSource(files.NewBytesSource("template.yml", []byte(templateYAML))),
+	})
+
+	ui := cmdcore.NewPlainUI(false)
+	opts := cmdtpl.NewOptions()
+	opts.SchemaEnabled = true
+	out := opts.RunWithFiles(cmdtpl.TemplateInput{Files: filesToProcess}, ui)
+	if out.Err != nil {
+		t.Fatalf("Expected RunWithFiles to succeed, but was error: %s", out.Err)
+	}
+
+	if len(out.Files) != 1 {
+		t.Fatalf("Expected number of output files to be 1, but was: %d", len(out.Files))
+	}
+
+	expected := `rendered: true
+vpc:
+  name: vpc-203d912a
+  nullable_string: null
+  nullable_int: null
+`
+	if string(out.Files[0].Bytes()) != expected {
+		diff := difflib.PPDiff(strings.Split(string(out.Files[0].Bytes()), "\n"), strings.Split(expected, "\n"))
+		t.Fatalf("Expected output to only include template YAML, differences:\n%s", diff)
+	}
+}
+
 func TestNullableSchemaMapAllowsNull(t *testing.T) {
 	schemaYAML := `#@schema/match data_values=True
 ---
@@ -103,7 +154,7 @@ vpc:
   name: ""
   subnet_ids:
   - 0
-  #@schema/nullable
+  #@schema/nullable 
   subnet_config:
   - id: 0
     mask: "255.255.0.0"

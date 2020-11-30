@@ -6,6 +6,7 @@ package yamlmeta
 import (
 	"fmt"
 	"github.com/k14s/ytt/pkg/filepos"
+	"github.com/k14s/ytt/pkg/template"
 )
 
 type Type interface {
@@ -45,22 +46,26 @@ type DocumentType struct {
 	ValueType Type // typically one of: MapType, ArrayType, ScalarType
 }
 type MapType struct {
-	Items []*MapItemType
+	Items       []*MapItemType
+	annotations template.NodeAnnotations
 }
 type MapItemType struct {
 	Key          interface{} // usually a string
 	ValueType    Type
 	DefaultValue interface{}
 	Position     *filepos.Position
+	annotations  template.NodeAnnotations
 }
 type ArrayType struct {
-	ItemsType Type
+	ItemsType   Type
+	annotations template.NodeAnnotations
 }
 type ArrayItemType struct {
 	ValueType Type
 }
 type ScalarType struct {
-	Type interface{}
+	Type        interface{}
+	annotations template.NodeAnnotations
 }
 
 func (t *DocumentType) CheckAllows(item *MapItem) TypeCheck {

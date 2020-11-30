@@ -5,10 +5,20 @@ package yamlmeta
 
 import (
 	"fmt"
+	"github.com/k14s/ytt/pkg/structmeta"
+	"github.com/k14s/ytt/pkg/template"
 )
 
 type Schema interface {
 	AssignType(typeable Typeable) TypeCheck
+}
+
+const (
+	AnnotationSchemaNullable structmeta.AnnotationName = "schema/nullable"
+)
+
+func schemaAnnotationsList() []structmeta.AnnotationName {
+	return []structmeta.AnnotationName{AnnotationSchemaNullable}
 }
 
 var _ Schema = &AnySchema{}
@@ -59,6 +69,11 @@ func NewMapType(m *Map) (*MapType, error) {
 		}
 		mapType.Items = append(mapType.Items, mapItemType)
 	}
+	annotations, err := schemaAnnotations(m)
+	if err != nil {
+		return nil, err
+	}
+	mapType.annotations = annotations
 	return mapType, nil
 }
 
@@ -68,23 +83,20 @@ func NewMapItemType(item *MapItem) (*MapItemType, error) {
 		return nil, err
 	}
 
-	nullable := false
-	for _, meta := range item.GetMetas() {
-		if meta.Data == "@schema/nullable" {
-			nullable = true
-			break
-		}
-	}
-
 	defaultValue := item.Value
 	if _, ok := item.Value.(*Array); ok {
 		defaultValue = &Array{}
 	}
-	if nullable {
+
+	annotations, err := schemaAnnotations(item)
+	if err != nil {
+		return nil, err
+	}
+	if _, nullable := annotations[AnnotationSchemaNullable]; nullable {
 		defaultValue = nil
 	}
 
-	return &MapItemType{Key: item.Key, ValueType: valueType, DefaultValue: defaultValue, Position: item.Position}, nil
+	return &MapItemType{Key: item.Key, ValueType: valueType, DefaultValue: defaultValue, Position: item.Position, annotations: annotations}, nil
 }
 
 func NewArrayType(a *Array) (*ArrayType, error) {
@@ -101,7 +113,12 @@ func NewArrayType(a *Array) (*ArrayType, error) {
 		return nil, err
 	}
 
-	return &ArrayType{ItemsType: arrayItemType}, nil
+	annotations, err := schemaAnnotations(a)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ArrayType{ItemsType: arrayItemType, annotations: annotations}, nil
 }
 
 func NewArrayItemType(item *ArrayItem) (*ArrayItemType, error) {
@@ -110,10 +127,12 @@ func NewArrayItemType(item *ArrayItem) (*ArrayItemType, error) {
 		return nil, err
 	}
 
-	for _, meta := range item.GetMetas() {
-		if meta.Data == "@schema/nullable" {
-			return nil, fmt.Errorf("Array items cannot be annotated with #@schema/nullable (%s). If this behaviour would be valuable, please submit an issue on https://github.com/vmware-tanzu/carvel-ytt", item.GetPosition().AsCompactString())
-		}
+	annotations, err := schemaAnnotations(item)
+	if err != nil {
+		return nil, err
+	}
+	if _, found := annotations[AnnotationSchemaNullable]; found {
+		return nil, fmt.Errorf("Array items cannot be annotated with #@schema/nullable (%s). If this behaviour would be valuable, please submit an issue on https://github.com/vmware-tanzu/carvel-ytt", item.GetPosition().AsCompactString())
 	}
 
 	return &ArrayItemType{ValueType: valueType}, nil
@@ -148,4 +167,24 @@ func (as *AnySchema) AssignType(typeable Typeable) TypeCheck { return TypeCheck{
 
 func (s *DocumentSchema) AssignType(typeable Typeable) TypeCheck {
 	return s.Allowed.AssignTypeTo(typeable)
+}
+
+func (t MapItemType) IsNullable() bool {
+	_, found := t.annotations[AnnotationSchemaNullable]
+	return found
+}
+
+func schemaAnnotations(node Node) (annotations template.NodeAnnotations, err error) {
+	annotations = template.NodeAnnotations{}
+	anns := template.NewAnnotations(node)
+
+	for key, meta := range anns {
+		for _, schAnnName := range schemaAnnotationsList() {
+			if key == schAnnName {
+				annotations[key] = meta
+				break
+			}
+		}
+	}
+	return
 }
