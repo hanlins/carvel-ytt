@@ -98,8 +98,10 @@ func (p DataValuesPreProcessing) templateFile(fileInLib *FileInLibrary) ([]*yaml
 		return nil, err
 	}
 	if _, ok := p.loader.schema.(*yamlmeta.AnySchema); !ok {
+
 		var outerTypeCheck yamlmeta.TypeCheck
-		for _, doc := range resultDocSet.Items {
+		// Skip first document because the parser inserts a new doc start at the beginning of every doc
+		for _, doc := range resultDocSet.Items[1:] {
 			outerTypeCheck = p.loader.schema.AssignType(doc)
 			if len(outerTypeCheck.Violations) > 0 {
 				return resultDocSet.Items, fmt.Errorf("Typechecking violations found: [%v]", strings.Join(outerTypeCheck.Violations, ", "))

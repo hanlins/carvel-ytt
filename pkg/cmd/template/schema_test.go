@@ -22,6 +22,7 @@ vpc:
   nullable_string: "empty"
   #@schema/nullable
   nullable_int: 10
+  foo: ""
 `
 	dataValuesYAML := `#@data/values
 ---
@@ -39,9 +40,107 @@ vpc:
   name: vpc-203d912a
   nullable_string: null
   nullable_int: null
+  foo: ""
 `
 
 	testSchemaTemplates(t, schemaYAML, dataValuesYAML, templateYAML, expected)
+}
+
+func TestNullableAnnotationOnFirstElementOfMap(t *testing.T) {
+	schemaYAML := `#@schema/match data_values=True
+---
+app:
+ #@schema/nullable
+ db:
+   username: un
+   password: pw
+`
+	dataValuesYAML := `#@data/values
+---
+app:
+`
+	templateYAML := `#@ load("@ytt:data", "data")
+---
+db: #@ data.values.app.db
+`
+
+	expected := `
+db: null
+`
+
+	testSchemaTemplates(t, schemaYAML, dataValuesYAML, templateYAML, expected)
+}
+
+func TestNullableAtTopLevelWithDataValueOmitted(t *testing.T) {
+	schemaYAML := `#@schema/match data_values=True
+---
+#@schema/nullable
+vpc:
+  #@schema/nullable
+  name: ""
+foo: "bar"
+`
+	dataValuesYAML := `---
+#@data/values
+---
+`
+	templateYAML := `#@ load("@ytt:data", "data")
+---
+vpc: #@ data.values.vpc
+`
+
+	expected := `vpc: null
+`
+
+	testSchemaTemplates(t, schemaYAML, dataValuesYAML, templateYAML, expected)
+}
+
+func TestSchemaWithEmptyOverlay(t *testing.T) {
+	schemaYAML := `#@schema/match data_values=True
+---
+#@schema/nullable
+vpc:
+  #@schema/nullable
+  name: ""
+foo: "bar"
+`
+	dataValuesYAML := `#@data/values
+---
+`
+	dataValuesOverlayYAML := `#@ load("@ytt:overlay", "overlay")
+#@overlay/match by=overlay.all
+---
+`
+	templateYAML := `#@ load("@ytt:data", "data")
+---
+vpc: #@ data.values.vpc
+`
+
+	expected := ``
+
+	filesToProcess := files.NewSortedFiles([]*files.File{
+		files.MustNewFileFromSource(files.NewBytesSource("schema.yml", []byte(schemaYAML))),
+		files.MustNewFileFromSource(files.NewBytesSource("dataValues.yml", []byte(dataValuesYAML))),
+		files.MustNewFileFromSource(files.NewBytesSource("overlay.yml", []byte(dataValuesOverlayYAML))),
+		files.MustNewFileFromSource(files.NewBytesSource("template.yml", []byte(templateYAML))),
+	})
+
+	ui := cmdcore.NewPlainUI(false)
+	opts := cmdtpl.NewOptions()
+	opts.SchemaEnabled = true
+	out := opts.RunWithFiles(cmdtpl.TemplateInput{Files: filesToProcess}, ui)
+	if out.Err != nil {
+		t.Fatalf("Expected RunWithFiles to succeed, but was error: %s", out.Err)
+	}
+
+	if len(out.Files) != 1 {
+		t.Fatalf("Expected number of output files to be 1, but was: %d", len(out.Files))
+	}
+
+	if string(out.Files[0].Bytes()) != expected {
+		diff := difflib.PPDiff(strings.Split(string(out.Files[0].Bytes()), "\n"), strings.Split(expected, "\n"))
+		t.Fatalf("Expected output to only include template YAML, differences:\n%s", diff)
+	}
 }
 
 func TestNullableSchemaMapAllowsNull(t *testing.T) {

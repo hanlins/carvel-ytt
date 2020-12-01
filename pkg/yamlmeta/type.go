@@ -92,9 +92,19 @@ func (t *DocumentType) AssignTypeTo(typeable Typeable) (chk TypeCheck) {
 	}
 	typeable.SetType(t)
 	typeableChild, ok := doc.Value.(Typeable)
-	if ok {
+	if ok || doc.Value == nil {
 		if t.ValueType != nil {
-			childCheck := t.ValueType.AssignTypeTo(typeableChild)
+			tChild := typeableChild
+			if doc.Value == nil {
+				switch t.ValueType.(type) {
+				case *MapType:
+					tChild = &Map{}
+				default:
+					chk.Violations = append(chk.Violations, fmt.Sprintf("Expected node at %s to be %s, but was a %T", typeableChild.GetPosition().AsCompactString(), "Map", t.ValueType))
+				}
+				doc.Value = tChild
+			}
+			childCheck := t.ValueType.AssignTypeTo(tChild)
 			chk.Violations = append(chk.Violations, childCheck.Violations...)
 		} else {
 			chk.Violations = []string{fmt.Sprintf("Expected node at %s to be %s, but was a %T", typeableChild.GetPosition().AsCompactString(), "nil", typeableChild)}
