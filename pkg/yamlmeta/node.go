@@ -302,8 +302,7 @@ func checkCollectionItem(value interface{}, valueType Type, violationErrorMessag
 			chk.Violations = append(chk.Violations, violation)
 		}
 	default:
-		// TODO: how to report this error?
-		violation := fmt.Sprintf(violationErrorMessage, typedValue, "anything else")
+		violation := fmt.Sprintf(violationErrorMessage, typedValue, valueType)
 		chk.Violations = append(chk.Violations, violation)
 	}
 	return chk

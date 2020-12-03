@@ -46,29 +46,32 @@ vpc:
 	testSchemaTemplates(t, schemaYAML, dataValuesYAML, templateYAML, expected)
 }
 
-func TestNullableAnnotationOnFirstElementOfMap(t *testing.T) {
+func TestProvidingNullToNonNullableNodeFails(t *testing.T) {
 	schemaYAML := `#@schema/match data_values=True
 ---
-app:
- #@schema/nullable
- db:
-   username: un
-   password: pw
+app: {}
 `
 	dataValuesYAML := `#@data/values
 ---
-app:
-`
-	templateYAML := `#@ load("@ytt:data", "data")
----
-db: #@ data.values.app.db
+app: null
 `
 
-	expected := `
-db: null
-`
+	filesToProcess := files.NewSortedFiles([]*files.File{
+		files.MustNewFileFromSource(files.NewBytesSource("schema.yml", []byte(schemaYAML))),
+		files.MustNewFileFromSource(files.NewBytesSource("dataValues.yml", []byte(dataValuesYAML))),
+	})
 
-	testSchemaTemplates(t, schemaYAML, dataValuesYAML, templateYAML, expected)
+	ui := cmdcore.NewPlainUI(false)
+	opts := cmdtpl.NewOptions()
+	opts.SchemaEnabled = true
+	out := opts.RunWithFiles(cmdtpl.TemplateInput{Files: filesToProcess}, ui)
+	if out.Err == nil {
+		t.Fatalf("Expected RunWithFiles to fail with message about type checking the 'app' key given nil should expect a map")
+	}
+
+	if !strings.Contains(out.Err.Error(), "Typechecking violations found: [Map item 'app' at dataValues.yml:3 was type <nil> when *yamlmeta.MapType was expected") {
+		t.Fatalf("Expected an error about type checking, but got: %v", out.Err.Error())
+	}
 }
 
 func TestNullableAtTopLevelWithDataValueOmitted(t *testing.T) {
