@@ -17,10 +17,6 @@ const (
 	AnnotationSchemaNullable structmeta.AnnotationName = "schema/nullable"
 )
 
-func schemaAnnotationsList() []structmeta.AnnotationName {
-	return []structmeta.AnnotationName{AnnotationSchemaNullable}
-}
-
 var _ Schema = &AnySchema{}
 var _ Schema = &DocumentSchema{}
 
@@ -69,8 +65,7 @@ func NewMapType(m *Map) (*MapType, error) {
 		}
 		mapType.Items = append(mapType.Items, mapItemType)
 	}
-	annotations := schemaAnnotations(m)
-	mapType.annotations = annotations
+	annotations := template.NewAnnotations(m)
 	if _, nullable := annotations[AnnotationSchemaNullable]; nullable {
 		mapType.Items = nil
 	}
@@ -89,8 +84,7 @@ func NewMapItemType(item *MapItem) (*MapItemType, error) {
 		defaultValue = &Array{}
 	}
 
-	annotations := schemaAnnotations(item)
-
+	annotations := template.NewAnnotations(item)
 	if _, nullable := annotations[AnnotationSchemaNullable]; nullable {
 		defaultValue = nil
 	}
@@ -112,9 +106,7 @@ func NewArrayType(a *Array) (*ArrayType, error) {
 		return nil, err
 	}
 
-	annotations := schemaAnnotations(a)
-
-	return &ArrayType{ItemsType: arrayItemType, annotations: annotations}, nil
+	return &ArrayType{ItemsType: arrayItemType}, nil
 }
 
 func NewArrayItemType(item *ArrayItem) (*ArrayItemType, error) {
@@ -123,7 +115,7 @@ func NewArrayItemType(item *ArrayItem) (*ArrayItemType, error) {
 		return nil, err
 	}
 
-	annotations := schemaAnnotations(item)
+	annotations := template.NewAnnotations(item)
 
 	if _, found := annotations[AnnotationSchemaNullable]; found {
 		return nil, fmt.Errorf("Array items cannot be annotated with #@schema/nullable (%s). If this behaviour would be valuable, please submit an issue on https://github.com/vmware-tanzu/carvel-ytt", item.GetPosition().AsCompactString())
@@ -164,21 +156,6 @@ func (s *DocumentSchema) AssignType(typeable Typeable) TypeCheck {
 }
 
 func (t MapItemType) IsNullable() bool {
-	_, found := t.annotations[AnnotationSchemaNullable]
+	_, found := t.annotations.(template.NodeAnnotations)[AnnotationSchemaNullable]
 	return found
-}
-
-func schemaAnnotations(node Node) (annotations template.NodeAnnotations) {
-	annotations = template.NodeAnnotations{}
-	anns := template.NewAnnotations(node)
-
-	for key, meta := range anns {
-		for _, schAnnName := range schemaAnnotationsList() {
-			if key == schAnnName {
-				annotations[key] = meta
-				break
-			}
-		}
-	}
-	return
 }
