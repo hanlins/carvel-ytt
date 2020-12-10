@@ -5,6 +5,7 @@ package workspace
 
 import (
 	"fmt"
+	"github.com/k14s/ytt/pkg/schema"
 	"strings"
 
 	"github.com/k14s/starlark-go/starlark"
@@ -97,7 +98,7 @@ func (p DataValuesPreProcessing) templateFile(fileInLib *FileInLibrary) ([]*yaml
 	if err != nil {
 		return nil, err
 	}
-	if _, ok := p.loader.schema.(*yamlmeta.AnySchema); !ok {
+	if _, ok := p.loader.schema.(*schema.AnySchema); !ok {
 
 		var outerTypeCheck yamlmeta.TypeCheck
 		// Skip first document because the parser inserts a new doc start at the beginning of every doc

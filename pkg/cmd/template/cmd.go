@@ -5,6 +5,7 @@ package template
 
 import (
 	"fmt"
+	"github.com/k14s/ytt/pkg/schema"
 	"time"
 
 	cmdcore "github.com/k14s/ytt/pkg/cmd/core"
@@ -131,10 +132,10 @@ func (o *TemplateOptions) RunWithFiles(in TemplateInput, ui cmdcore.PlainUI) Tem
 	if err != nil {
 		return TemplateOutput{Err: err}
 	}
-	var schema yamlmeta.Schema = &yamlmeta.AnySchema{}
+	var schemaVar schema.Schema = &schema.AnySchema{}
 	if len(schemaDocs) > 0 {
 		if o.SchemaEnabled {
-			schema, err = yamlmeta.NewDocumentSchema(schemaDocs[0])
+			schemaVar, err = schema.NewDocumentSchema(schemaDocs[0])
 			if err != nil {
 				return TemplateOutput{Err: err}
 			}
@@ -151,7 +152,7 @@ func (o *TemplateOptions) RunWithFiles(in TemplateInput, ui cmdcore.PlainUI) Tem
 		}
 	}
 
-	values, libraryValues, err := libraryLoader.Values(valuesOverlays, schema)
+	values, libraryValues, err := libraryLoader.Values(valuesOverlays, schemaVar)
 	if err != nil {
 		return TemplateOutput{Err: err}
 	}

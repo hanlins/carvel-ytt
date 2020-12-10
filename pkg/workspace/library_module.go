@@ -5,6 +5,7 @@ package workspace
 
 import (
 	"fmt"
+	"github.com/k14s/ytt/pkg/schema"
 	"strings"
 
 	"github.com/k14s/starlark-go/starlark"
@@ -317,7 +318,7 @@ func (l *libraryValue) libraryValues(ll *LibraryLoader) (*DataValues, []*DataVal
 		}
 	}
 
-	dvs, foundChildDVss, err := ll.Values(append(dvss, afterLibModDVss...), &yamlmeta.AnySchema{})
+	dvs, foundChildDVss, err := ll.Values(append(dvss, afterLibModDVss...), &schema.AnySchema{})
 	if err != nil {
 		return nil, nil, err
 	}

@@ -6,6 +6,11 @@ package yamlmeta
 import (
 	"fmt"
 	"github.com/k14s/ytt/pkg/filepos"
+	"github.com/k14s/ytt/pkg/structmeta"
+)
+
+const (
+	AnnotationSchemaNullable structmeta.AnnotationName = "schema/nullable"
 )
 
 type Type interface {
@@ -52,7 +57,7 @@ type MapItemType struct {
 	ValueType    Type
 	DefaultValue interface{}
 	Position     *filepos.Position
-	annotations  interface{}
+	Annotations  TypeAnnotations
 }
 type ArrayType struct {
 	ItemsType Type
@@ -63,6 +68,8 @@ type ArrayItemType struct {
 type ScalarType struct {
 	Type interface{}
 }
+
+type TypeAnnotations map[structmeta.AnnotationName]interface{}
 
 func (t *DocumentType) CheckAllows(item *MapItem) TypeCheck {
 	panic("Attempt to check if a MapItem is allowed as a value of a Document.")
@@ -230,4 +237,9 @@ func (t *MapType) CheckAllows(item *MapItem) (chk TypeCheck) {
 		chk.Violations = append(chk.Violations, fmt.Sprintf("Map item '%s' at %s is not defined in schema", item.Key, item.Position.AsCompactString()))
 	}
 	return chk
+}
+
+func (t MapItemType) IsNullable() bool {
+	_, found := t.Annotations[AnnotationSchemaNullable]
+	return found
 }
