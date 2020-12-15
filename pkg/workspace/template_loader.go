@@ -5,17 +5,24 @@ package workspace
 
 import (
 	"fmt"
-	"github.com/k14s/ytt/pkg/schema"
 	"strings"
 
 	"github.com/k14s/starlark-go/starlark"
 	"github.com/k14s/ytt/pkg/files"
+	"github.com/k14s/ytt/pkg/schema"
 	"github.com/k14s/ytt/pkg/template"
 	"github.com/k14s/ytt/pkg/texttemplate"
 	"github.com/k14s/ytt/pkg/yamlmeta"
 	"github.com/k14s/ytt/pkg/yamltemplate"
 	"github.com/k14s/ytt/pkg/yttlibrary"
 )
+
+type Schema interface {
+	AssignType(typeable yamlmeta.Typeable) yamlmeta.TypeCheck
+}
+
+var _ Schema = &schema.AnySchema{}
+var _ Schema = &schema.DocumentSchema{}
 
 type TemplateLoader struct {
 	ui                 files.UI
@@ -24,7 +31,7 @@ type TemplateLoader struct {
 	opts               TemplateLoaderOpts
 	compiledTemplates  map[string]*template.CompiledTemplate
 	libraryExecFactory *LibraryExecutionFactory
-	schema             schema.Schema
+	schema             Schema
 }
 
 type TemplateLoaderOpts struct {
@@ -39,7 +46,7 @@ type TemplateLoaderOptsOverrides struct {
 	StrictYAML              *bool
 }
 
-func NewTemplateLoader(values *DataValues, libraryValuess []*DataValues, ui files.UI, opts TemplateLoaderOpts, libraryExecFactory *LibraryExecutionFactory, schema schema.Schema) *TemplateLoader {
+func NewTemplateLoader(values *DataValues, libraryValuess []*DataValues, ui files.UI, opts TemplateLoaderOpts, libraryExecFactory *LibraryExecutionFactory, schema Schema) *TemplateLoader {
 
 	if values == nil {
 		panic("Expected values to be non-nil")

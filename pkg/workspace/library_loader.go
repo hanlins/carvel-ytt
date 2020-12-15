@@ -5,11 +5,11 @@ package workspace
 
 import (
 	"fmt"
-	"github.com/k14s/ytt/pkg/schema"
 	"strings"
 
 	"github.com/k14s/starlark-go/starlark"
 	"github.com/k14s/ytt/pkg/files"
+	"github.com/k14s/ytt/pkg/schema"
 	"github.com/k14s/ytt/pkg/structmeta"
 	"github.com/k14s/ytt/pkg/yamlmeta"
 	"github.com/k14s/ytt/pkg/yamltemplate"
@@ -73,7 +73,7 @@ func (ll *LibraryLoader) Schemas() ([]*yamlmeta.Document, error) {
 	return nil, nil
 }
 
-func (ll *LibraryLoader) Values(valuesOverlays []*DataValues, schema schema.Schema) (*DataValues, []*DataValues, error) {
+func (ll *LibraryLoader) Values(valuesOverlays []*DataValues, schema Schema) (*DataValues, []*DataValues, error) {
 	loader := NewTemplateLoader(NewEmptyDataValues(), nil, ll.ui, ll.templateLoaderOpts, ll.libraryExecFactory, schema)
 
 	valuesFiles, err := ll.valuesFiles(loader)

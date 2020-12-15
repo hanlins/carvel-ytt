@@ -132,7 +132,7 @@ func (o *TemplateOptions) RunWithFiles(in TemplateInput, ui cmdcore.PlainUI) Tem
 	if err != nil {
 		return TemplateOutput{Err: err}
 	}
-	var schemaVar schema.Schema = &schema.AnySchema{}
+	var schemaVar workspace.Schema = &schema.AnySchema{}
 	if len(schemaDocs) > 0 {
 		if o.SchemaEnabled {
 			schemaVar, err = schema.NewDocumentSchema(schemaDocs[0])

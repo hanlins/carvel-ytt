@@ -144,6 +144,7 @@ func (n *Array) GetValues() []interface{} {
 }
 
 func (n *ArrayItem) GetValues() []interface{} { return []interface{}{n.Value} }
+func (s *Scalar) GetValues() []interface{}    { return []interface{}{s.Value} }
 
 func (n *DocumentSet) GetMetas() []*Meta { return n.Metas }
 func (n *Document) GetMetas() []*Meta    { return n.Metas }
@@ -209,19 +210,20 @@ func (n *Map) Check() (chk TypeCheck) {
 }
 func (n *MapItem) Check() (chk TypeCheck) {
 	mapItemViolation := fmt.Sprintf("Map item '%s' at %s", n.Key, n.Position.AsCompactString())
-	violationErrorMessage := mapItemViolation + " was type %T when %T was expected"
 
-	mapItemType, ok := n.Type.(*MapItemType)
-	if !ok {
-		chk.Violations = append(chk.Violations, fmt.Sprintf(violationErrorMessage, n.Value, n))
+	check := n.Type.CheckType(n, mapItemViolation)
+	if check.HasViolations() {
+		chk.Violations = check.Violations
+		return check
+	}
+
+	// If the current value of the item is null
+	// there is no extra validation needed Type wise
+	if n.Value == nil {
 		return
 	}
 
-	if n.Value == nil && mapItemType.IsNullable() {
-		return
-	}
-
-	check := checkCollectionItem(n.Value, mapItemType.ValueType, violationErrorMessage)
+	check = checkCollectionItem(n.Value, n.Type.GetValueType(), mapItemViolation)
 	if check.HasViolations() {
 		chk.Violations = append(chk.Violations, check.Violations...)
 	}
@@ -238,15 +240,13 @@ func (n *Array) Check() (chk TypeCheck) {
 }
 func (n *ArrayItem) Check() (chk TypeCheck) {
 	arrayItemViolation := fmt.Sprintf("Array item at %s", n.Position.AsCompactString())
-	violationErrorMessage := arrayItemViolation + " was type %T when %T was expected"
 
-	arrayItemType, ok := n.Type.(ArrayItemType)
-	if !ok {
-		chk.Violations = append(chk.Violations, fmt.Sprintf(violationErrorMessage, n.Value, n))
-		return chk
+	chk = n.Type.CheckType(n, arrayItemViolation)
+	if chk.HasViolations() {
+		return
 	}
 
-	check := checkCollectionItem(n.Value, arrayItemType.ValueType, violationErrorMessage)
+	check := checkCollectionItem(n.Value, n.Type.GetValueType(), arrayItemViolation)
 	if check.HasViolations() {
 		chk.Violations = append(chk.Violations, check.Violations...)
 	}
@@ -262,48 +262,8 @@ func checkCollectionItem(value interface{}, valueType Type, violationErrorMessag
 	case *Array:
 		check := typedValue.Check()
 		chk.Violations = append(chk.Violations, check.Violations...)
-
-	case string:
-		scalarType, ok := valueType.(*ScalarType)
-		if !ok {
-			violation := fmt.Sprintf(violationErrorMessage, typedValue, valueType)
-			chk.Violations = append(chk.Violations, violation)
-			return chk
-		}
-
-		if _, ok := scalarType.Type.(string); !ok {
-			violation := fmt.Sprintf(violationErrorMessage, typedValue, scalarType.Type)
-			chk.Violations = append(chk.Violations, violation)
-		}
-
-	case int:
-		scalarType, ok := valueType.(*ScalarType)
-		if !ok {
-			violation := fmt.Sprintf(violationErrorMessage, typedValue, valueType)
-			chk.Violations = append(chk.Violations, violation)
-			return chk
-		}
-
-		if _, ok := scalarType.Type.(int); !ok {
-			violation := fmt.Sprintf(violationErrorMessage, typedValue, scalarType.Type)
-			chk.Violations = append(chk.Violations, violation)
-		}
-
-	case bool:
-		scalarType, ok := valueType.(*ScalarType)
-		if !ok {
-			violation := fmt.Sprintf(violationErrorMessage, typedValue, valueType)
-			chk.Violations = append(chk.Violations, violation)
-			return chk
-		}
-
-		if _, ok := scalarType.Type.(bool); !ok {
-			violation := fmt.Sprintf(violationErrorMessage, typedValue, scalarType.Type)
-			chk.Violations = append(chk.Violations, violation)
-		}
 	default:
-		violation := fmt.Sprintf(violationErrorMessage, typedValue, valueType)
-		chk.Violations = append(chk.Violations, violation)
+		chk = valueType.CheckType(&Scalar{Value: value}, violationErrorMessage)
 	}
 	return chk
 }

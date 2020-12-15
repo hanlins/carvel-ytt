@@ -69,7 +69,7 @@ app: null
 		t.Fatalf("Expected RunWithFiles to fail with message about type checking the 'app' key given nil should expect a map")
 	}
 
-	if !strings.Contains(out.Err.Error(), "Typechecking violations found: [Map item 'app' at dataValues.yml:3 was type <nil> when *yamlmeta.MapType was expected") {
+	if !strings.Contains(out.Err.Error(), "Typechecking violations found: [Map item 'app' at dataValues.yml:3 was type <nil> when *schema.MapType was expected") {
 		t.Fatalf("Expected an error about type checking, but got: %v", out.Err.Error())
 	}
 }
@@ -515,7 +515,7 @@ clients:
 	if out.Err == nil {
 		t.Fatalf("Expected an error about the schema check failures, but succeeded.")
 	}
-	expectedErr := "Typechecking violations found: [Map item 'value' at dataValues.yml:8 is not defined in schema, Array item at dataValues.yml:12 was type string when *yamlmeta.MapType was expected]"
+	expectedErr := "Typechecking violations found: [Map item 'value' at dataValues.yml:8 is not defined in schema, Array item at dataValues.yml:12 was type string when *yamlmeta.Map was expected]"
 	if !strings.Contains(out.Err.Error(), expectedErr) {
 		t.Fatalf("Expected an error about a schema check failure, but got: %s", out.Err.Error())
 	}
